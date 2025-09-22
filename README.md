@@ -1,56 +1,64 @@
-# Email Reply Classification
+# Sales Email Analyzer
 
-This project trains two models on a small email reply dataset:
-- Baseline: TF-IDF + Logistic Regression
-- Transformer: Fine-tunes `distilbert-base-uncased` with Hugging Face
+This project trains two models to classify sales email replies and serves them via a FastAPI endpoint.
+- **Baseline**: A simple and fast TF-IDF + Logistic Regression model.
+- **Transformer**: A more powerful, fine-tuned `distilbert-base-uncased` model.
 
 ## Data
-Place the CSV at `data/reply_classification_dataset.csv` with columns:
-- `reply`: the email reply text
-- `label`: one of `positive`, `negative`, `neutral` (case-insensitive)
+The model expects a CSV file at `data/reply_classification_dataset.csv` with two columns:
+- `reply`: The text content of the email reply.
+- `label`: The classification (`positive`, `negative`, or `neutral`).
 
 ## Setup
-Install Python 3.10+ and dependencies:
+1.  **Create a virtual environment:**
+    ```bash
+    python3 -m venv .venv
+    source .venv/bin/activate
+    ```
+2.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -U pip
-pip install -r requirements.txt
-```
+## How to Run
 
-## Run (Simple Scripts)
-- Baseline:
+### 1. Train the Models
+Before running the API, you must train both models. The artifacts will be saved to the `outputs/` directory.
 ```bash
+# Train the baseline model (fast)
 python train_baseline.py
-```
-- Transformer:
-```bash
+
+# Train the transformer model (can take a few minutes)
 python train_transformer.py
 ```
 
-Artifacts and metrics are saved under `outputs/` and `models/`.
-
-## API (FastAPI)
-Wraps the baseline model for predictions.
-
-1) Ensure the baseline model artifacts exist:
+### 2. Run the API Server
+Once both models are trained, start the FastAPI server.
 ```bash
-python train_baseline.py
+python app.py
+```
+The API will be available at `http://127.0.0.1:8000`.
+
+### 3. Make a Prediction
+You can send a POST request to the `/predict` endpoint to get classifications from both models.
+
+**Example Request:**
+```bash
+curl -X POST "http://127.0.0.1:8000/predict" \
+     -H "Content-Type: application/json" \
+     -d '{"text": "Sounds interesting, can you send more details?"}'
 ```
 
-2) Start the API:
-```bash
-uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-3) Predict example:
-```bash
-curl -s -X POST http://127.0.0.1:8000/predict \
-	-H 'Content-Type: application/json' \
-	-d '{"text": "Looking forward to the demo!"}'
-```
-Response:
+**Example Response:**
 ```json
-{ "label": "positive", "confidence": 0.95 }
+{
+  "baseline": {
+    "label": "neutral",
+    "confidence": 0.6725
+  },
+  "transformer": {
+    "label": "neutral",
+    "confidence": 0.4975
+  }
+}
 ```
